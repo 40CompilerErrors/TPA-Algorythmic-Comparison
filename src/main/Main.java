@@ -86,7 +86,7 @@ public class Main {
 		Lde[fin + 1] = Integer.MAX_VALUE;
 		int i = ini;
 		int j = med + 1;
-		for (int cont = ini; i <= fin; i++) {
+		for (int cont = ini; cont <= fin; cont++) {
 			if (Liz[i] < Lde[j]) {
 				L[cont] = Liz[i];
 				i++;
@@ -119,7 +119,7 @@ public class Main {
 			long memoriaQuickTotal = 0;
 			long memoriaMergeTotal = 0;
 			
-			fileWriter.append("Tamaño Array," + arraySize);
+			fileWriter.append("Tamaï¿½o Array," + arraySize);
 			fileWriter.append('\n');
 			fileWriter.append(FILE_HEADER.toString());
 			fileWriter.append('\n');
