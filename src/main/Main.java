@@ -3,7 +3,21 @@ package main;
 import java.io.FileWriter;
 import java.io.IOException;
 
+import sun.security.util.Cache;
+
 public class Main {
+	
+	static int busquedaSec(int[] a, int x) {
+		boolean aux = true;
+		int i = 0;
+		while (aux == true && i < a.length) {
+			if (a[i] == x) {
+				aux = false;
+			}
+			i++;
+		}
+		return i;
+	}
 	
 	static int BusBin(int[] a, int x) {
 		if (a.length == 0 || a[0] > x || a[a.length - 1] < x) {
@@ -18,6 +32,7 @@ public class Main {
 			return 0;
 		} else {
 			int k = (ini + fin) / 2;
+			
 			if (x == a[k]) {
 				return k;
 			} else {
@@ -30,34 +45,45 @@ public class Main {
 		}
 	}
 
-	static void quicksort(int[] L, int ini, int fin) {
-		if (ini < fin) {
-			int x = pivotear(L, ini, fin);
-			quicksort(L, ini, x - 1);
-			quicksort(L, x + 1, fin);
+	static long quicksort(int[] L,int ini, int fin){
+		if(ini<fin){
+			long x[]=pivotear(L,ini,fin);
+			return Math.abs(x[1])+quicksort(L,ini,(int)x[0]-1)+
+			quicksort(L,(int)x[0]+1,fin);
+		} else {
+			return 0;
 		}
 	}
-
-	static int pivotear(int[] L, int ini, int fin) {
-		int i = ini;
-		int p = L[ini];
-		for (int j = ini + 1; j <= fin; ++j) {
-			if (L[j] <= p) {
+	
+	static long[] pivotear(int[] L,int ini, int fin){
+		long start=(Runtime.getRuntime().freeMemory());
+		int i=ini;
+		int p=L[ini];
+		for(int j=ini+1;j<=fin;++j){
+			if(L[j]<=p){
 				i++;
-				if (i != j) {
-					int aux = L[i];
-					L[i] = L[j];
-					L[j] = aux;
+				if(i!=j){
+					int aux=L[i];
+					L[i]=L[j];
+					L[j]=aux;
 				}
-			}
-		}
-		int aux = L[ini];
-		L[ini] = L[i];
-		L[i] = aux;
-
-		return i;
+			} 
+		} 
+		int aux=L[ini];
+		L[ini]=L[i];
+		L[i]=aux;
+		start-=(Runtime.getRuntime().freeMemory());
+		
+		return new long[]{i,start};
 	}
-
+/*
+ * Tanto en el mergesort como en el merge se tenia problemas con el paso del recolector de basura
+ * para disminuir este error hemos hecho la medicion desde dentro del metodo y que sume para posteriormente
+ * devolverla, al realizar la resta podian seguir saliendo valores negativos por lo tanto decidimos sacar valores
+ * absolutos para ver la diferencia ya que un 0 o un numero negativo podrian atrofiar mucho mas la media,
+ * al ser comparado con el quicksort decidimos realizar lo mismo dentro de su metodo para que tengan las mismas operaciones
+ * adicionales
+ */
 	static long mergesort(int[] L, int ini, int fin) {
 
 		if (ini < fin) {
@@ -98,6 +124,7 @@ public class Main {
 		return start - Runtime.getRuntime().freeMemory();
 	}
 
+
 	public static void main(String[] args) throws IOException {
 		int arraySize = 5000;
 		
@@ -136,11 +163,11 @@ public class Main {
 				quick = new int[arraySize];
 				
 				for (int i = 0; i < arraySize; ++i) {
-					quick[i] = (int) (Math.random() * (arraySize));
+					quick[i] = (int) (Math.random() * (10000000));
 				}
-				if (ite == 0) {
-					// System.out.print(Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory());
-				}
+				int aBuscar = (int) (Math.random() * (10000000));
+				
+				
 				mershe = quick.clone();
 				
 				for (int i = 0; i < 5; i++)
@@ -148,11 +175,10 @@ public class Main {
 				
 				//Quicksort
 				//Initialize locals
-				long memoriaQuick = (Runtime.getRuntime().freeMemory());
+				
 				double quickTime = 0 - System.nanoTime();
-				quicksort(quick, 0, quick.length - 1);
+				long memoriaQuick=quicksort(quick, 0, quick.length - 1);
 				quickTime += System.nanoTime();
-				memoriaQuick -= (Runtime.getRuntime().freeMemory());
 				//Add to totals
 				quickTimeTotal += quickTime;
 				memoriaQuickTotal += memoriaQuick;
@@ -161,6 +187,7 @@ public class Main {
 				fileWriter.append(',');
 				fileWriter.append(Double.toString(quickTime));
 				fileWriter.append(',');
+				
 
 				
 				for (int i = 0; i < 5; i++)
@@ -184,32 +211,29 @@ public class Main {
 				for (int i = 0; i < 5; i++)
 					Runtime.getRuntime().gc();
 
+				
+				
+				//Sequential Search
+				double secTime = 0 - System.nanoTime();
+				int lugar=busquedaSec(quick,aBuscar);
+				secTime += System.nanoTime();
+				//System.out.println(aBuscar+" "+lugar+" "+secTime);
+				//Add to total
+				secTimeTotal += secTime;
+				
+				//Append to CSV
+				fileWriter.append(Double.toString(secTime));
+				fileWriter.append(',');
+				
 				//Binary Search
-				int aBuscar = (int) (Math.random() * (arraySize));
+				
 				double binTime = 0 - System.nanoTime();
-				BusBin(quick, aBuscar);
+				BusBin(mershe, aBuscar);
 				binTime += System.nanoTime();
 				//Add to total
 				binTimeTotal += binTime;
 				//Append to CSV
 				fileWriter.append(Double.toString(binTime));
-				fileWriter.append(',');
-
-				//Sequential Search
-				double secTime = 0 - System.nanoTime();
-				boolean aux = true;
-				int i = 0;
-				while (aux == true && i < quick.length) {
-					if (quick[i] == aBuscar) {
-						aux = false;
-					}
-					i++;
-				}
-				secTime += System.nanoTime();
-				//Add to total
-				secTimeTotal += secTime;
-				//Append to CSV
-				fileWriter.append(Double.toString(secTime));
 				fileWriter.append(',');
 				
 				for (int j = 0; j < 5; j++)
@@ -217,6 +241,7 @@ public class Main {
 				
 				//End the line for the CSV
 				fileWriter.append('\n');
+				
 			}
 			//Print means to CSV
 			int itNum = (arraySize-5000)/2500;
