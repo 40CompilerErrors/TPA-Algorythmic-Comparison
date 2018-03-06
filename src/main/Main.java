@@ -2,6 +2,7 @@ package main;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Locale;
 
 import sun.security.util.Cache;
 
@@ -11,10 +12,8 @@ public class Main {
 		boolean aux = true;
 		int i = 0;
 		while (aux == true && i < a.length) {
-			if (a[i] == x) {
-				aux = false;
-			}
-			i++;
+			if (a[i] == x) aux = false;
+			else i++;
 		}
 		return i;
 	}
@@ -29,7 +28,7 @@ public class Main {
 
 	static int BusBinDV(int[] a, int ini, int fin, int x) {
 		if (ini > fin) {
-			return 0;
+			return a.length;
 		} else {
 			int k = (ini + fin) / 2;
 			
@@ -129,13 +128,20 @@ public class Main {
 		int arraySize = 5000;
 		
 		FileWriter fileWriter = null;
+		//Abrimos el fichero en el que escribiremos los datos
 		fileWriter = new FileWriter("Eficiencia.csv");
-		
-		final String FILE_HEADER = "Quicksort Memoria,Quicksort nsec,Mergesort Memoria,Mergesort nsc,Binary Search nsec,Sequential Search nsec";
+		//Iniciamos la cabecera de esta iteracion con un determinado tamaño de array
+		final String FILE_HEADER = "Quicksort Memoria,Quicksort nsec,Mergesort Memoria,Mergesort nsc,Sequential Search nsec,Binary Search nsec";
 		
 
+		/*
+		 * Necesitamos comprobar los siguientes rangos:
+		 * 5000, 7500, 10000, 15000
+		 * Hemos añadido el rango de 12500 para poder tener una mayor facilidad de implimentación del bucle
+		 */
 		for (; arraySize <= 15000; arraySize += 2500) {
 			
+			//Definición de variables que usara todo el tamaño
 			int iteracion = 100;
 			double binTimeTotal = 0;
 			double mergeTimeTotal = 0;
@@ -145,8 +151,8 @@ public class Main {
 			int[] mershe;
 			long memoriaQuickTotal = 0;
 			long memoriaMergeTotal = 0;
-			
-			fileWriter.append("Tama�o Array," + arraySize);
+			//Creamos la caberecera del documento
+			fileWriter.append("Tamaño Array," + arraySize);
 			fileWriter.append('\n');
 			fileWriter.append(FILE_HEADER.toString());
 			fileWriter.append('\n');
@@ -157,32 +163,37 @@ public class Main {
 			int ite = 0;
 			for (; ite < iteracion; ite++) {
 				
-				for (int i = 0; i < 5; i++)
-					Runtime.getRuntime().gc();
+				//Lamamos al recolector de basura ahora para asegurarnos de que las medidas de memoria son correctas luego.
+				for (int i = 0; i < 5; i++) Runtime.getRuntime().gc();
 
 				quick = new int[arraySize];
 				
+				/*
+				 * Nos aseguramos como mejor podemos que los numeros generados 
+				 * son de distribucion lo mas aleatoria posible, tomando inspiracion de los algoritmos de
+				 * hashing.
+				 * 
+				 */
 				for (int i = 0; i < arraySize; ++i) {
-					quick[i] = (int) (Math.random() * (10000000));
+					quick[i] = (int) Math.floor((Math.random() * (Integer.MAX_VALUE) % 1299827));
 				}
-				int aBuscar = (int) (Math.random() * (10000000));
+				int aBuscar = quick[(int)Math.floor((Math.random() * arraySize))];
 				
-				
+				//Clonamos el array, ya que la eficiencia sería poco fiable si ordenasen el mismo
 				mershe = quick.clone();
 				
-				for (int i = 0; i < 5; i++)
-					Runtime.getRuntime().gc();
+				//Llamada al recolector de basura.
+				for (int i = 0; i < 5; i++) Runtime.getRuntime().gc();
 				
 				//Quicksort
-				//Initialize locals
-				
+				//Inializamos valores locales
 				double quickTime = 0 - System.nanoTime();
 				long memoriaQuick=quicksort(quick, 0, quick.length - 1);
 				quickTime += System.nanoTime();
-				//Add to totals
+				//Añadimos al total
 				quickTimeTotal += quickTime;
 				memoriaQuickTotal += memoriaQuick;
-				//Add to CSV
+				//Añadimos al CSV
 				fileWriter.append(Long.toString(memoriaQuick));
 				fileWriter.append(',');
 				fileWriter.append(Double.toString(quickTime));
@@ -194,85 +205,106 @@ public class Main {
 					Runtime.getRuntime().gc();
 			 
 				//Mergesort
-				//Initialize locals
+				//Inializamos valores locales
 				double mergeTime = 0 -System.nanoTime();
 				long mergeMemory = mergesort(mershe, 0, mershe.length - 1);
 				mergeTime += System.nanoTime();
-				//Add to totals
+				//Añadimos al total
 				mergeTimeTotal += mergeTime;
 				memoriaMergeTotal += mergeMemory;
-				//Add to CSV
+				//Añadimos al CSV
 				fileWriter.append(Long.toString(mergeMemory));
 				fileWriter.append(',');
 				fileWriter.append(Double.toString(mergeTime));
 				fileWriter.append(',');
 						
+				//Nos aseguramos que el recolector de basura no supone un problema 
+				for (int i = 0; i < 5; i++) Runtime.getRuntime().gc();
 				
-				for (int i = 0; i < 5; i++)
-					Runtime.getRuntime().gc();
-
-				
-				
-				//Sequential Search
-				double secTime = 0 - System.nanoTime();
-				int lugar=busquedaSec(quick,aBuscar);
-				secTime += System.nanoTime();
-				//System.out.println(aBuscar+" "+lugar+" "+secTime);
+				/*
+				 * Durante testeo, nos dimos cuenta que el orden en el que llamabamos a las busquedas era de mucha
+				 * importancia en lo que a su tiempo de ejecución se refiere. Nuestra conclusión es que esto se 
+				 * debe a la caché, por lo que hemos decidido alternarlas, ejecutando una primero en las iteraciones
+				 * pares, y la otra en las iteraciones impares.
+				 * 
+				 */
+				double secTime = 0, binTime = 0;
+				int lugarS = 0,lugarB = 0;
+				if(ite % 2 == 0) {
+					//SequentialSearch
+					secTime -= System.nanoTime();
+					lugarS = busquedaSec(quick,aBuscar);
+					secTime += System.nanoTime();
+					//Nos aseguramos que el recolector de basura no supone un problema 
+					for (int i = 0; i < 5; i++) Runtime.getRuntime().gc();
+					//Binary Search
+					binTime -= System.nanoTime();
+					lugarB = BusBin(mershe, aBuscar);
+					binTime += System.nanoTime();
+				}
+				else {
+					//Binary Search
+					binTime -= System.nanoTime();
+					lugarB = BusBin(mershe, aBuscar);
+					binTime += System.nanoTime();
+					//Nos aseguramos que el recolector de basura no supone un problema 
+					for (int i = 0; i < 5; i++) Runtime.getRuntime().gc();
+					//SequentialSearch
+					secTime -= System.nanoTime();
+					lugarS = busquedaSec(quick,aBuscar);
+					secTime += System.nanoTime();		
+				}
+			
+				//Comprobamos si el indice que devuelve es correcto, y si llevan al mismo valor
+				//Cabe mencionar que si hay valores repetidos, el indice puede no ser el mismo pero el valor si
+				if(aBuscar != quick[lugarS]) System.out.println(" lugarS NO DEVUELVE EL INDICE CORRECTO");
+				if(aBuscar != quick[lugarB]) System.out.println(" lugarB NO DEVUELVE EL INDICE CORRECTO");
+				if(quick[lugarS] != quick[lugarB]) System.out.println("ERROR! Busquedas no devuelven el mismo valor ");
 				//Add to total
 				secTimeTotal += secTime;
-				
+				binTimeTotal += binTime;
 				//Append to CSV
 				fileWriter.append(Double.toString(secTime));
 				fileWriter.append(',');
-				
-				//Binary Search
-				
-				double binTime = 0 - System.nanoTime();
-				BusBin(mershe, aBuscar);
-				binTime += System.nanoTime();
-				//Add to total
-				binTimeTotal += binTime;
-				//Append to CSV
 				fileWriter.append(Double.toString(binTime));
-				fileWriter.append(',');
-				
-				for (int j = 0; j < 5; j++)
-					Runtime.getRuntime().gc();
-				
+				fileWriter.append(',');	
+		
 				//End the line for the CSV
 				fileWriter.append('\n');
 				
 			}
-			//Print means to CSV
+			//Imprimimos las medias en CSV utilizando el sumatorio de Excel
 			int itNum = (arraySize-5000)/2500;
 			char[] columns = {'A','B','C','D','E','F'};
-			fileWriter.append("Totales:\n");
-			for(char c :columns) fileWriter.append("=SUM("+ c + (3+ 5*itNum + iteracion*itNum) + 
+			fileWriter.append("Medias:\n");
+			for(char c :columns) fileWriter.append("=SUMA("+ c + (3+ 5*itNum + iteracion*itNum) + 
 												":" + c + (2+ 5*itNum + iteracion  +iteracion*itNum)+ ")/" + ite +",");	
+			
+			//Dejamos un espacio entre iteraciones
 			fileWriter.append('\n');
 			fileWriter.append('\n');
 
+			//Preparamos las medias para imprimirlas por pantalla 
 			quickTimeTotal /= ite;
 			mergeTimeTotal /= ite;
 			binTimeTotal /= ite;
 			secTimeTotal /= ite;
 			memoriaQuickTotal /= ite;
 			memoriaMergeTotal /= ite;
-
-			System.out.println("Para tamaño " + arraySize + ":");
+			
+			System.out.println("Para tamaÃ±o " + arraySize + ":");
 			System.out.println("\tQUICK Memoria " + memoriaQuickTotal);
 			System.out.println("\tMERSH Memoria " + memoriaMergeTotal);
 			System.out.println("\tQUICK " + quickTimeTotal + " nsec");
 			System.out.println("\tMERSH " + mergeTimeTotal + " nsec");
 			System.out.println("\tBINARY " + binTimeTotal + " nsec");
 			System.out.println("\tSecuencial " + secTimeTotal + " nsec");
-			for (int i = 0; i < 5; i++)
-				Runtime.getRuntime().gc();
+			//Una ultima llamada al recolector de basura.
+			for (int i = 0; i < 5; i++) Runtime.getRuntime().gc();
 		}
-		
+		//Cerramos el documento
         fileWriter.flush();
         fileWriter.close();
-
 
 	}
 }
